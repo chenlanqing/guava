@@ -15,10 +15,10 @@
 package com.google.common.util.concurrent;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.util.concurrent.Internal.saturatedToNanos;
+import static com.google.common.util.concurrent.Internal.toNanosSaturated;
 
-import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtIncompatible;
+import com.google.common.primitives.Longs;
 import com.google.errorprone.annotations.concurrent.GuardedBy;
 import com.google.j2objc.annotations.Weak;
 import java.time.Duration;
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import javax.annotation.CheckForNull;
 
 /**
  * A synchronization abstraction supporting waiting on arbitrary boolean conditions.
@@ -199,9 +199,9 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  * @author Martin Buchholz
  * @since 10.0
  */
-@Beta
 @GwtIncompatible
 @SuppressWarnings("GuardedBy") // TODO(b/35466881): Fix or suppress.
+@ElementTypesAreNonnullByDefault
 public final class Monitor {
   // TODO(user): Use raw LockSupport or AbstractQueuedSynchronizer instead of ReentrantLock.
   // TODO(user): "Port" jsr166 tests for ReentrantLock.
@@ -302,7 +302,6 @@ public final class Monitor {
    *
    * @since 10.0
    */
-  @Beta
   public abstract static class Guard {
 
     @Weak final Monitor monitor;
@@ -313,7 +312,7 @@ public final class Monitor {
 
     /** The next active guard */
     @GuardedBy("monitor.lock")
-    @Nullable
+    @CheckForNull
     Guard next;
 
     protected Guard(Monitor monitor) {
@@ -340,6 +339,7 @@ public final class Monitor {
    * A linked list threaded through the Guard.next field.
    */
   @GuardedBy("lock")
+  @CheckForNull
   private Guard activeGuards = null;
 
   /**
@@ -390,7 +390,7 @@ public final class Monitor {
    * @since 28.0
    */
   public boolean enter(Duration time) {
-    return enter(saturatedToNanos(time), TimeUnit.NANOSECONDS);
+    return enter(toNanosSaturated(time), TimeUnit.NANOSECONDS);
   }
 
   /**
@@ -440,7 +440,7 @@ public final class Monitor {
    * @since 28.0
    */
   public boolean enterInterruptibly(Duration time) throws InterruptedException {
-    return enterInterruptibly(saturatedToNanos(time), TimeUnit.NANOSECONDS);
+    return enterInterruptibly(toNanosSaturated(time), TimeUnit.NANOSECONDS);
   }
 
   /**
@@ -501,7 +501,7 @@ public final class Monitor {
    * @since 28.0
    */
   public boolean enterWhen(Guard guard, Duration time) throws InterruptedException {
-    return enterWhen(guard, saturatedToNanos(time), TimeUnit.NANOSECONDS);
+    return enterWhen(guard, toNanosSaturated(time), TimeUnit.NANOSECONDS);
   }
 
   /**
@@ -594,7 +594,7 @@ public final class Monitor {
    * @since 28.0
    */
   public boolean enterWhenUninterruptibly(Guard guard, Duration time) {
-    return enterWhenUninterruptibly(guard, saturatedToNanos(time), TimeUnit.NANOSECONDS);
+    return enterWhenUninterruptibly(guard, toNanosSaturated(time), TimeUnit.NANOSECONDS);
   }
 
   /**
@@ -695,7 +695,7 @@ public final class Monitor {
    * @since 28.0
    */
   public boolean enterIf(Guard guard, Duration time) {
-    return enterIf(guard, saturatedToNanos(time), TimeUnit.NANOSECONDS);
+    return enterIf(guard, toNanosSaturated(time), TimeUnit.NANOSECONDS);
   }
 
   /**
@@ -755,7 +755,7 @@ public final class Monitor {
    * @since 28.0
    */
   public boolean enterIfInterruptibly(Guard guard, Duration time) throws InterruptedException {
-    return enterIfInterruptibly(guard, saturatedToNanos(time), TimeUnit.NANOSECONDS);
+    return enterIfInterruptibly(guard, toNanosSaturated(time), TimeUnit.NANOSECONDS);
   }
 
   /**
@@ -819,7 +819,7 @@ public final class Monitor {
    * @throws InterruptedException if interrupted while waiting
    */
   public void waitFor(Guard guard) throws InterruptedException {
-    if (!((guard.monitor == this) & lock.isHeldByCurrentThread())) {
+    if (!((guard.monitor == this) && lock.isHeldByCurrentThread())) {
       throw new IllegalMonitorStateException();
     }
     if (!guard.isSatisfied()) {
@@ -836,7 +836,7 @@ public final class Monitor {
    * @since 28.0
    */
   public boolean waitFor(Guard guard, Duration time) throws InterruptedException {
-    return waitFor(guard, saturatedToNanos(time), TimeUnit.NANOSECONDS);
+    return waitFor(guard, toNanosSaturated(time), TimeUnit.NANOSECONDS);
   }
 
   /**
@@ -849,7 +849,7 @@ public final class Monitor {
   @SuppressWarnings("GoodTime") // should accept a java.time.Duration
   public boolean waitFor(Guard guard, long time, TimeUnit unit) throws InterruptedException {
     final long timeoutNanos = toSafeNanos(time, unit);
-    if (!((guard.monitor == this) & lock.isHeldByCurrentThread())) {
+    if (!((guard.monitor == this) && lock.isHeldByCurrentThread())) {
       throw new IllegalMonitorStateException();
     }
     if (guard.isSatisfied()) {
@@ -866,7 +866,7 @@ public final class Monitor {
    * currently occupying this monitor.
    */
   public void waitForUninterruptibly(Guard guard) {
-    if (!((guard.monitor == this) & lock.isHeldByCurrentThread())) {
+    if (!((guard.monitor == this) && lock.isHeldByCurrentThread())) {
       throw new IllegalMonitorStateException();
     }
     if (!guard.isSatisfied()) {
@@ -882,7 +882,7 @@ public final class Monitor {
    * @since 28.0
    */
   public boolean waitForUninterruptibly(Guard guard, Duration time) {
-    return waitForUninterruptibly(guard, saturatedToNanos(time), TimeUnit.NANOSECONDS);
+    return waitForUninterruptibly(guard, toNanosSaturated(time), TimeUnit.NANOSECONDS);
   }
 
   /**
@@ -894,7 +894,7 @@ public final class Monitor {
   @SuppressWarnings("GoodTime") // should accept a java.time.Duration
   public boolean waitForUninterruptibly(Guard guard, long time, TimeUnit unit) {
     final long timeoutNanos = toSafeNanos(time, unit);
-    if (!((guard.monitor == this) & lock.isHeldByCurrentThread())) {
+    if (!((guard.monitor == this) && lock.isHeldByCurrentThread())) {
       throw new IllegalMonitorStateException();
     }
     if (guard.isSatisfied()) {
@@ -1030,9 +1030,7 @@ public final class Monitor {
    */
   private static long toSafeNanos(long time, TimeUnit unit) {
     long timeoutNanos = unit.toNanos(time);
-    return (timeoutNanos <= 0L)
-        ? 0L
-        : (timeoutNanos > (Long.MAX_VALUE / 4) * 3) ? (Long.MAX_VALUE / 4) * 3 : timeoutNanos;
+    return Longs.constrainToRange(timeoutNanos, 0L, (Long.MAX_VALUE / 4) * 3);
   }
 
   /**
@@ -1123,7 +1121,7 @@ public final class Monitor {
   private boolean isSatisfied(Guard guard) {
     try {
       return guard.isSatisfied();
-    } catch (Throwable throwable) {
+    } catch (RuntimeException | Error throwable) {
       signalAllWaiters();
       throw throwable;
     }

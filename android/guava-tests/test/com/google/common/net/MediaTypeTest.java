@@ -46,7 +46,6 @@ import com.google.common.testing.EqualsTester;
 import com.google.common.testing.NullPointerTester;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
-import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.Arrays;
 import junit.framework.TestCase;
@@ -148,7 +147,7 @@ public class MediaTypeTest extends TestCase {
     }
   }
 
-  public void testCreate_nonAsciiParameter() {
+  public void testCreate_nonAsciiType() {
     try {
       MediaType.create("…", "a");
       fail();
@@ -156,9 +155,25 @@ public class MediaTypeTest extends TestCase {
     }
   }
 
-  public void testCreate_nonAsciiParameterValue() {
+  public void testCreate_nonAsciiSubtype() {
     try {
       MediaType.create("a", "…");
+      fail();
+    } catch (IllegalArgumentException expected) {
+    }
+  }
+
+  public void testCreate_emptyType() {
+    try {
+      MediaType.create("", "a");
+      fail();
+    } catch (IllegalArgumentException expected) {
+    }
+  }
+
+  public void testCreate_emptySubtype() {
+    try {
+      MediaType.create("a", "");
       fail();
     } catch (IllegalArgumentException expected) {
     }
@@ -173,6 +188,12 @@ public class MediaTypeTest extends TestCase {
   public void testCreateAudioType() {
     MediaType newType = MediaType.createAudioType("yams");
     assertEquals("audio", newType.type());
+    assertEquals("yams", newType.subtype());
+  }
+
+  public void testCreateFontType() {
+    MediaType newType = MediaType.createFontType("yams");
+    assertEquals("font", newType.type());
     assertEquals("yams", newType.subtype());
   }
 
@@ -297,6 +318,15 @@ public class MediaTypeTest extends TestCase {
     MediaType mediaType = MediaType.parse("text/plain");
     try {
       mediaType.withParameter("a", "…");
+      fail();
+    } catch (IllegalArgumentException expected) {
+    }
+  }
+
+  public void testWithParameter_emptyParameter() {
+    MediaType mediaType = MediaType.parse("text/plain");
+    try {
+      mediaType.withParameter("", "a");
       fail();
     } catch (IllegalArgumentException expected) {
     }
@@ -506,7 +536,7 @@ public class MediaTypeTest extends TestCase {
     try {
       mediaType.charset();
       fail();
-    } catch (IllegalCharsetNameException expected) {
+    } catch (IllegalArgumentException expected) {
     }
   }
 

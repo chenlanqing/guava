@@ -27,6 +27,7 @@ import com.google.errorprone.annotations.concurrent.GuardedBy;
 import com.google.j2objc.annotations.Weak;
 import com.google.j2objc.annotations.WeakOuter;
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
@@ -47,7 +48,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReentrantLock;
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
@@ -64,9 +64,13 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  * @author Charles Fry
  * @author Doug Lea ({@code ConcurrentHashMap})
  */
-// TODO(kak/cpovirk): Consider removing @CanIgnoreReturnValue from this class.
+// TODO(kak): Consider removing @CanIgnoreReturnValue from this class.
 @GwtIncompatible
-@SuppressWarnings("GuardedBy") // TODO(b/35466881): Fix or suppress.
+@SuppressWarnings({
+  "GuardedBy", // TODO(b/35466881): Fix or suppress.
+  "nullness", // too much trouble for the payoff
+})
+// TODO(cpovirk): Annotate for nullness.
 class MapMakerInternalMap<
         K,
         V,
@@ -1189,7 +1193,7 @@ class MapMakerInternalMap<
     int threshold;
 
     /** The per-segment table. */
-    @MonotonicNonNull volatile AtomicReferenceArray<E> table;
+    volatile @Nullable AtomicReferenceArray<E> table;
 
     /** The maximum size of this map. MapMaker.UNSET_INT if there is no maximum. */
     final int maxSegmentSize;
@@ -2471,7 +2475,7 @@ class MapMakerInternalMap<
     }
   }
 
-  @MonotonicNonNull transient Set<K> keySet;
+  transient @Nullable Set<K> keySet;
 
   @Override
   public Set<K> keySet() {
@@ -2479,7 +2483,7 @@ class MapMakerInternalMap<
     return (ks != null) ? ks : (keySet = new KeySet());
   }
 
-  @MonotonicNonNull transient Collection<V> values;
+  transient @Nullable Collection<V> values;
 
   @Override
   public Collection<V> values() {
@@ -2487,7 +2491,7 @@ class MapMakerInternalMap<
     return (vs != null) ? vs : (values = new Values());
   }
 
-  @MonotonicNonNull transient Set<Entry<K, V>> entrySet;
+  transient @Nullable Set<Entry<K, V>> entrySet;
 
   @Override
   public Set<Entry<K, V>> entrySet() {
@@ -2501,8 +2505,8 @@ class MapMakerInternalMap<
 
     int nextSegmentIndex;
     int nextTableIndex;
-    @MonotonicNonNull Segment<K, V, E, S> currentSegment;
-    @MonotonicNonNull AtomicReferenceArray<E> currentTable;
+    @Nullable Segment<K, V, E, S> currentSegment;
+    @Nullable AtomicReferenceArray<E> currentTable;
     @Nullable E nextEntry;
     @Nullable WriteThroughEntry nextExternal;
     @Nullable WriteThroughEntry lastReturned;
@@ -2835,6 +2839,10 @@ class MapMakerInternalMap<
         entryHelper.valueStrength().defaultEquivalence(),
         concurrencyLevel,
         this);
+  }
+
+  private void readObject(ObjectInputStream in) throws InvalidObjectException {
+    throw new InvalidObjectException("Use SerializationProxy");
   }
 
   /**

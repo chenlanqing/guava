@@ -18,7 +18,6 @@ package com.google.common.testing;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtIncompatible;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Charsets;
@@ -74,6 +73,7 @@ import com.google.common.io.CharSource;
 import com.google.common.primitives.Primitives;
 import com.google.common.primitives.UnsignedInteger;
 import com.google.common.primitives.UnsignedLong;
+import com.google.errorprone.annotations.Keep;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -171,7 +171,6 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  * @author Ben Yu
  * @since 12.0
  */
-@Beta
 @GwtIncompatible
 public final class ArbitraryInstances {
 
@@ -336,8 +335,7 @@ public final class ArbitraryInstances {
   }
 
   @SuppressWarnings("unchecked") // it's a subtype map
-  @Nullable
-  private static <T> Class<? extends T> getImplementation(Class<T> type) {
+  private static <T> @Nullable Class<? extends T> getImplementation(Class<T> type) {
     return (Class<? extends T>) implementations.get(type);
   }
 
@@ -347,8 +345,7 @@ public final class ArbitraryInstances {
    * Returns an arbitrary instance for {@code type}, or {@code null} if no arbitrary instance can be
    * determined.
    */
-  @Nullable
-  public static <T> T get(Class<T> type) {
+  public static <T> @Nullable T get(Class<T> type) {
     T defaultValue = DEFAULTS.getInstance(type);
     if (defaultValue != null) {
       return defaultValue;
@@ -398,8 +395,7 @@ public final class ArbitraryInstances {
     }
   }
 
-  @Nullable
-  private static <T> T arbitraryConstantInstanceOrNull(Class<T> type) {
+  private static <T> @Nullable T arbitraryConstantInstanceOrNull(Class<T> type) {
     Field[] fields = type.getDeclaredFields();
     Arrays.sort(fields, BY_FIELD_NAME);
     for (Field field : fields) {
@@ -442,6 +438,7 @@ public final class ArbitraryInstances {
     }
 
     public static final class DeterministicRandom extends Random {
+      @Keep
       public DeterministicRandom() {
         super(0);
       }

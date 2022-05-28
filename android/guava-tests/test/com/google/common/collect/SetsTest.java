@@ -73,10 +73,10 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArraySet;
+import javax.annotation.CheckForNull;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 /**
  * Unit test for {@code Sets}.
@@ -325,6 +325,7 @@ public class SetsTest extends TestCase {
     D
   }
 
+  @SuppressWarnings("DoNotCall")
   public void testImmutableEnumSet() {
     Set<SomeEnum> units = Sets.immutableEnumSet(SomeEnum.D, SomeEnum.B);
 
@@ -949,6 +950,13 @@ public class SetsTest extends TestCase {
     }
   }
 
+  public void testPowerSetEquals_independentOfOrder() {
+    ImmutableSet<Integer> elements = ImmutableSet.of(1, 2, 3, 4);
+    Set<Set<Integer>> forward = powerSet(elements);
+    Set<Set<Integer>> reverse = powerSet(ImmutableSet.copyOf(elements.asList().reverse()));
+    new EqualsTester().addEqualityGroup(forward, reverse).testEquals();
+  }
+
   /**
    * Test that a hash code miscomputed by "input.hashCode() * tooFarValue / 2" is correct under our
    * {@code hashCode} implementation.
@@ -1069,7 +1077,7 @@ public class SetsTest extends TestCase {
    * same as the given comparator.
    */
   private static <E> void verifySortedSetContents(
-      SortedSet<E> set, Iterable<E> iterable, @NullableDecl Comparator<E> comparator) {
+      SortedSet<E> set, Iterable<E> iterable, @CheckForNull Comparator<E> comparator) {
     assertSame(comparator, set.comparator());
     verifySetContents(set, iterable);
   }

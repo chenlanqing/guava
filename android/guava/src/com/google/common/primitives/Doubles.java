@@ -18,6 +18,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkElementIndex;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkPositionIndexes;
+import static com.google.common.base.Strings.lenientFormat;
 import static java.lang.Double.NEGATIVE_INFINITY;
 import static java.lang.Double.POSITIVE_INFINITY;
 
@@ -33,7 +34,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.RandomAccess;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
+import javax.annotation.CheckForNull;
 
 /**
  * Static utility methods pertaining to {@code double} primitives, that are not already found in
@@ -46,7 +47,8 @@ import org.checkerframework.checker.nullness.compatqual.NullableDecl;
  * @since 1.0
  */
 @GwtCompatible(emulated = true)
-public final class Doubles {
+@ElementTypesAreNonnullByDefault
+public final class Doubles extends DoublesMethodsForWeb {
   private Doubles() {}
 
   /**
@@ -207,6 +209,8 @@ public final class Doubles {
    *     the array
    * @throws IllegalArgumentException if {@code array} is empty
    */
+  @GwtIncompatible(
+      "Available in GWT! Annotation is to avoid conflict with GWT specialization of base class.")
   public static double min(double... array) {
     checkArgument(array.length > 0);
     double min = array[0];
@@ -225,6 +229,8 @@ public final class Doubles {
    *     in the array
    * @throws IllegalArgumentException if {@code array} is empty
    */
+  @GwtIncompatible(
+      "Available in GWT! Annotation is to avoid conflict with GWT specialization of base class.")
   public static double max(double... array) {
     checkArgument(array.length > 0);
     double max = array[0];
@@ -249,8 +255,13 @@ public final class Doubles {
    */
   @Beta
   public static double constrainToRange(double value, double min, double max) {
-    checkArgument(min <= max, "min (%s) must be less than or equal to max (%s)", min, max);
-    return Math.min(Math.max(value, min), max);
+    // avoid auto-boxing by not using Preconditions.checkArgument(); see Guava issue 3984
+    // Reject NaN by testing for the good case (min <= max) instead of the bad (min > max).
+    if (min <= max) {
+      return Math.min(Math.max(value, min), max);
+    }
+    throw new IllegalArgumentException(
+        lenientFormat("min (%s) must be less than or equal to max (%s)", min, max));
   }
 
   /**
@@ -457,6 +468,56 @@ public final class Doubles {
   }
 
   /**
+   * Performs a right rotation of {@code array} of "distance" places, so that the first element is
+   * moved to index "distance", and the element at index {@code i} ends up at index {@code (distance
+   * + i) mod array.length}. This is equivalent to {@code Collections.rotate(Bytes.asList(array),
+   * distance)}, but is considerably faster and avoids allocation and garbage collection.
+   *
+   * <p>The provided "distance" may be negative, which will rotate left.
+   *
+   * @since NEXT
+   */
+  public static void rotate(double[] array, int distance) {
+    rotate(array, distance, 0, array.length);
+  }
+
+  /**
+   * Performs a right rotation of {@code array} between {@code fromIndex} inclusive and {@code
+   * toIndex} exclusive. This is equivalent to {@code
+   * Collections.rotate(Bytes.asList(array).subList(fromIndex, toIndex), distance)}, but is
+   * considerably faster and avoids allocations and garbage collection.
+   *
+   * <p>The provided "distance" may be negative, which will rotate left.
+   *
+   * @throws IndexOutOfBoundsException if {@code fromIndex < 0}, {@code toIndex > array.length}, or
+   *     {@code toIndex > fromIndex}
+   * @since NEXT
+   */
+  public static void rotate(double[] array, int distance, int fromIndex, int toIndex) {
+    // See Ints.rotate for more details about possible algorithms here.
+    checkNotNull(array);
+    checkPositionIndexes(fromIndex, toIndex, array.length);
+    if (array.length <= 1) {
+      return;
+    }
+
+    int length = toIndex - fromIndex;
+    // Obtain m = (-distance mod length), a non-negative value less than "length". This is how many
+    // places left to rotate.
+    int m = -distance % length;
+    m = (m < 0) ? m + length : m;
+    // The current index of what will become the first element of the rotated section.
+    int newFirstIndex = m + fromIndex;
+    if (newFirstIndex == fromIndex) {
+      return;
+    }
+
+    reverse(array, fromIndex, newFirstIndex);
+    reverse(array, newFirstIndex, toIndex);
+    reverse(array, fromIndex, toIndex);
+  }
+
+  /**
    * Returns an array containing each value of {@code collection}, converted to a {@code double}
    * value in the manner of {@link Number#doubleValue}.
    *
@@ -543,14 +604,14 @@ public final class Doubles {
     }
 
     @Override
-    public boolean contains(Object target) {
+    public boolean contains(@CheckForNull Object target) {
       // Overridden to prevent a ton of boxing
       return (target instanceof Double)
           && Doubles.indexOf(array, (Double) target, start, end) != -1;
     }
 
     @Override
-    public int indexOf(Object target) {
+    public int indexOf(@CheckForNull Object target) {
       // Overridden to prevent a ton of boxing
       if (target instanceof Double) {
         int i = Doubles.indexOf(array, (Double) target, start, end);
@@ -562,7 +623,7 @@ public final class Doubles {
     }
 
     @Override
-    public int lastIndexOf(Object target) {
+    public int lastIndexOf(@CheckForNull Object target) {
       // Overridden to prevent a ton of boxing
       if (target instanceof Double) {
         int i = Doubles.lastIndexOf(array, (Double) target, start, end);
@@ -593,7 +654,7 @@ public final class Doubles {
     }
 
     @Override
-    public boolean equals(@NullableDecl Object object) {
+    public boolean equals(@CheckForNull Object object) {
       if (object == this) {
         return true;
       }
@@ -692,7 +753,7 @@ public final class Doubles {
    */
   @Beta
   @GwtIncompatible // regular expressions
-  @NullableDecl
+  @CheckForNull
   public static Double tryParse(String string) {
     if (FLOATING_POINT_PATTERN.matcher(string).matches()) {
       // TODO(lowasser): could be potentially optimized, but only with

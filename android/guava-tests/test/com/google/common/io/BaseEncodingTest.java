@@ -19,6 +19,7 @@ import static com.google.common.io.BaseEncoding.base16;
 import static com.google.common.io.BaseEncoding.base32;
 import static com.google.common.io.BaseEncoding.base32Hex;
 import static com.google.common.io.BaseEncoding.base64;
+import static com.google.common.io.BaseEncoding.base64Url;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.annotations.GwtCompatible;
@@ -34,8 +35,8 @@ import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import javax.annotation.CheckForNull;
 import junit.framework.TestCase;
-import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 /**
  * Tests for {@code BaseEncoding}.
@@ -189,6 +190,16 @@ public class BaseEncodingTest extends TestCase {
     testEncodesWithOffset(base64(), "foobar", 2, 3, "b2Jh");
     testEncodesWithOffset(base64(), "foobar", 3, 1, "Yg==");
     testEncodesWithOffset(base64(), "foobar", 4, 0, "");
+  }
+
+  public void testBase64Url() {
+    testDecodesByBytes(base64Url(), "_zzz", new byte[] {-1, 60, -13});
+    testDecodesByBytes(base64Url(), "-zzz", new byte[] {-5, 60, -13});
+  }
+
+  public void testBase64UrlInvalidDecodings() {
+    assertFailsToDecode(base64Url(), "+zzz", "Unrecognized character: +");
+    assertFailsToDecode(base64Url(), "/zzz", "Unrecognized character: /");
   }
 
   public void testBase32() {
@@ -384,12 +395,17 @@ public class BaseEncodingTest extends TestCase {
     assertThat(encoding.decode(encoded)).isEqualTo(decoded.getBytes(UTF_8));
   }
 
+  private static void testDecodesByBytes(BaseEncoding encoding, String encoded, byte[] decoded) {
+    assertTrue(encoding.canDecode(encoded));
+    assertThat(encoding.decode(encoded)).isEqualTo(decoded);
+  }
+
   private static void assertFailsToDecode(BaseEncoding encoding, String cannotDecode) {
     assertFailsToDecode(encoding, cannotDecode, null);
   }
 
   private static void assertFailsToDecode(
-      BaseEncoding encoding, String cannotDecode, @NullableDecl String expectedMessage) {
+      BaseEncoding encoding, String cannotDecode, @CheckForNull String expectedMessage) {
     // We use this somewhat weird pattern with an enum for each assertion we want to make as a way
     // of dealing with the fact that one of the assertions is @GwtIncompatible but we don't want to
     // have to have duplicate @GwtIncompatible test methods just to make that assertion.
@@ -403,7 +419,7 @@ public class BaseEncodingTest extends TestCase {
     DECODING_STREAM {
       @Override
       void assertFailsToDecode(
-          BaseEncoding encoding, String cannotDecode, @NullableDecl String expectedMessage) {
+          BaseEncoding encoding, String cannotDecode, @CheckForNull String expectedMessage) {
         // Regression test for case where DecodingException was swallowed by default implementation
         // of
         // InputStream.read(byte[], int, int)
@@ -424,14 +440,14 @@ public class BaseEncodingTest extends TestCase {
     CAN_DECODE {
       @Override
       void assertFailsToDecode(
-          BaseEncoding encoding, String cannotDecode, @NullableDecl String expectedMessage) {
+          BaseEncoding encoding, String cannotDecode, @CheckForNull String expectedMessage) {
         assertFalse(encoding.canDecode(cannotDecode));
       }
     },
     DECODE {
       @Override
       void assertFailsToDecode(
-          BaseEncoding encoding, String cannotDecode, @NullableDecl String expectedMessage) {
+          BaseEncoding encoding, String cannotDecode, @CheckForNull String expectedMessage) {
         try {
           encoding.decode(cannotDecode);
           fail("Expected IllegalArgumentException");
@@ -445,7 +461,7 @@ public class BaseEncodingTest extends TestCase {
     DECODE_CHECKED {
       @Override
       void assertFailsToDecode(
-          BaseEncoding encoding, String cannotDecode, @NullableDecl String expectedMessage) {
+          BaseEncoding encoding, String cannotDecode, @CheckForNull String expectedMessage) {
         try {
           encoding.decodeChecked(cannotDecode);
           fail("Expected DecodingException");
@@ -458,7 +474,7 @@ public class BaseEncodingTest extends TestCase {
     };
 
     abstract void assertFailsToDecode(
-        BaseEncoding encoding, String cannotDecode, @NullableDecl String expectedMessage);
+        BaseEncoding encoding, String cannotDecode, @CheckForNull String expectedMessage);
   }
 
   @GwtIncompatible // Reader/Writer

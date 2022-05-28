@@ -326,6 +326,7 @@ public class SetsTest extends TestCase {
     D
   }
 
+  @SuppressWarnings("DoNotCall")
   public void testImmutableEnumSet() {
     Set<SomeEnum> units = Sets.immutableEnumSet(SomeEnum.D, SomeEnum.B);
 
@@ -959,6 +960,13 @@ public class SetsTest extends TestCase {
           .testEquals();
       assertEquals(toHashSets(powerSet1).hashCode(), powerSet1.hashCode());
     }
+  }
+
+  public void testPowerSetEquals_independentOfOrder() {
+    ImmutableSet<Integer> elements = ImmutableSet.of(1, 2, 3, 4);
+    Set<Set<Integer>> forward = powerSet(elements);
+    Set<Set<Integer>> reverse = powerSet(ImmutableSet.copyOf(elements.asList().reverse()));
+    new EqualsTester().addEqualityGroup(forward, reverse).testEquals();
   }
 
   /**

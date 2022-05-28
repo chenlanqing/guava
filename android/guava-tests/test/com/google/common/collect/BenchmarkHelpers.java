@@ -107,21 +107,7 @@ final class BenchmarkHelpers {
         return ContiguousSet.copyOf(contents);
       }
     },
-  //    @GoogleInternal
-  //    CompactHashSetImpl {
-  //      @Override
-  //      public <E extends Comparable<E>> Set<E> create(Collection<E> contents) {
-  //        return CompactHashSet.create(contents);
-  //      }
-  //    },
-  //    @GoogleInternal
-  //    CompactLinkedHashSetImpl {
-  //      @Override
-  //      public <E extends Comparable<E>> Set<E> create(Collection<E> contents) {
-  //        return CompactLinkedHashSet.create(contents);
-  //      }
-  //    },
-  ;
+    ;
   }
 
   public enum ListMultimapImpl {
@@ -217,24 +203,6 @@ final class BenchmarkHelpers {
         return new ConcurrentHashMap<>(map);
       }
     },
-    //    @GoogleInternal
-    //    CompactHashmapImpl {
-    //      @Override
-    //      public <K extends Comparable<K>, V> Map<K, V> create(Map<K, V> map) {
-    //        Map<K, V> result = CompactHashMap.createWithExpectedSize(map.size());
-    //        result.putAll(map);
-    //        return result;
-    //      }
-    //    },
-    //    @GoogleInternal
-    //    CompactLinkedHashmapImpl {
-    //      @Override
-    //      public <K extends Comparable<K>, V> Map<K, V> create(Map<K, V> map) {
-    //        Map<K, V> result = CompactLinkedHashMap.createWithExpectedSize(map.size());
-    //        result.putAll(map);
-    //        return result;
-    //      }
-    //    },
     ImmutableMapImpl {
       @Override
       public <K extends Comparable<K>, V> Map<K, V> create(Map<K, V> map) {
@@ -418,7 +386,7 @@ final class BenchmarkHelpers {
       public <E> Interner<E> create(Collection<E> contents) {
         Interner<E> interner = Interners.newWeakInterner();
         for (E e : contents) {
-          interner.intern(e);
+          E unused = interner.intern(e);
         }
         return interner;
       }
@@ -428,7 +396,7 @@ final class BenchmarkHelpers {
       public <E> Interner<E> create(Collection<E> contents) {
         Interner<E> interner = Interners.newStrongInterner();
         for (E e : contents) {
-          interner.intern(e);
+          E unused = interner.intern(e);
         }
         return interner;
       }
